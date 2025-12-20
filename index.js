@@ -5,13 +5,26 @@ const url = require("url");
 const dataPath = path.join(__dirname, 'data');
 
 const server = http.createServer((req, res)=>{
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    try{
     if(req.url == '/jokes' && req.method == 'GET'){
-        getAllJokes(req,res);
+        return getAllJokes(req,res);
     }
     if(req.url =='/jokes' && req.method == 'POST'){
-        addJoke(req, res);
+        return addJoke(req, res);
     }
+        if(req.url.startsWith('/like')){
+        return like(req, res);
+    }
+  //      if(req.url.startsWith('/dislike')){
+   //     return dislike(req, res);
+   // }
+    res.statusCode = 404;
+    return res.end('Error 404');
+}
+catch(e){
+    res.statusCode=500;
+    return res.end('Error 500');
+}
 });
 server.listen(3000);
 
@@ -43,8 +56,31 @@ function addJoke(req, res){
         let dir = fs.readdirSync(dataPath);
         let fileName = dir.length+'.json';
         let filePath = path.join(dataPath, fileName);
+
+        fs.writeFileSync(filePath, JSON.stringify(joke));
+        res.statusCode = '201';
+        return res.end();(JSON.stringify(joke));
+    });
+}
+
+function like(req, res){
+    const url =require('url');
+    const params =url.parse(req.url, true).query;
+    let id = params.id;
+    if(id){
+        let filePath = path.join(dataPath, id+'.json')
+        let file =fs.readFileSync(filePath);
+        let jokeJson = Buffer.from(file).toString();
+        let joke = JSON.parse(jokeJson);
+
+        joke.likes++;
+
         fs.writeFileSync(filePath, JSON.stringify(joke));
 
-        res.end();
-    });
+        joke.id = id;
+
+        return res.end(JSON.stringify(joke));
+    }
+    res.statusCode = '400';
+    return res.end('Bad request');
 }
